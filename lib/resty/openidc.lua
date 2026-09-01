@@ -1871,7 +1871,11 @@ local function openidc_logout(opts, session)
   end
 
   if is_session_present(session) then
-    session:destroy()
+    local ok, destroy_err = session:destroy()
+    if not ok then
+      log(ERROR, "failed to destroy session: " .. destroy_err)
+      return destroy_err
+    end
   end
 
   if opts.revoke_tokens_on_logout then
@@ -2084,7 +2088,10 @@ function openidc.authenticate(opts, target_url, unauth_action, session_or_opts)
       return nil, err, session:get("original_url"), session
     end
 
-    openidc_logout(opts, session)
+    err = openidc_logout(opts, session)
+    if err then
+      return nil, err, target_url, session
+    end
     return nil, nil, target_url, session
   end
 
