@@ -1,4 +1,5 @@
 local http = require("socket.http")
+local ltn12 = require("ltn12")
 local test_support = require("test_support")
 require 'busted.runner'()
 
@@ -8,17 +9,19 @@ describe("when revocation_fail_mode is closed and the revocation store is unreac
       fail_mode = "closed",
       set_fails = true,
     },
-    unauth_action = "deny",
   })
   teardown(test_support.stop_server)
 
   local _, _, cookie = test_support.login()
 
-  local body, status = http.request({
+  local response_body = {}
+  local _, status = http.request({
     url = "http://127.0.0.1/default/logout",
     headers = { cookie = cookie },
     redirect = false,
+    sink = ltn12.sink.table(response_body),
   })
+  local body = table.concat(response_body)
 
   it("propagates destroy failure", function()
     assert.are.equals(401, status)
