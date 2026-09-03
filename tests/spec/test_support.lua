@@ -98,6 +98,7 @@ local DEFAULT_DELAY_RESPONSE = "0"
 local DEFAULT_REVOCATION_TEST_ENABLED = "false"
 local DEFAULT_REVOCATION_FAIL_MODE = '"closed"'
 local DEFAULT_REVOCATION_SET_FAILS = "false"
+local DEFAULT_REVOCATION_GET_FAILS_AFTER = "nil"
 
 local DEFAULT_INIT_TEMPLATE = [[
 local test_globals = {}
@@ -165,6 +166,10 @@ if REVOCATION_TEST_ENABLED then
         return true
       end,
       get = function(_, key)
+        local calls = revoked:incr("get_calls", 1, 0)
+        if REVOCATION_GET_FAILS_AFTER and calls > REVOCATION_GET_FAILS_AFTER then
+          return nil, "connection refused"
+        end
         return revoked:get(key)
       end,
     },
@@ -539,10 +544,11 @@ http {
 
         location /access_token {
             content_by_lua_block {
-                local access_token, err = test_globals.oidc.access_token(ACCESS_TOKEN_OPTS)
+                local access_token, err = test_globals.oidc.access_token(ACCESS_TOKEN_OPTS, test_globals.session_opts)
                 if not access_token then
                   ngx.status = 401
                   ngx.log(ngx.ERR, "access_token error: " .. (err or 'no message'))
+                  ngx.say("access_token failed: " .. (err or 'no message'))
                 else
                   ngx.header.content_type = 'text/plain'
                   ngx.say(access_token)
@@ -684,6 +690,8 @@ local function write_template(out, template, custom_config)
       ('"' .. (custom_config["revocation_test"].fail_mode or "closed") .. '"') or DEFAULT_REVOCATION_FAIL_MODE)
     :gsub("REVOCATION_SET_FAILS", custom_config["revocation_test"] and
       (custom_config["revocation_test"].set_fails and "true" or "false") or DEFAULT_REVOCATION_SET_FAILS)
+    :gsub("REVOCATION_GET_FAILS_AFTER", custom_config["revocation_test"] and
+      tostring(custom_config["revocation_test"].get_fails_after) or DEFAULT_REVOCATION_GET_FAILS_AFTER)
   out:write(content)
 end
 

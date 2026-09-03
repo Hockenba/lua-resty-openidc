@@ -3,6 +3,36 @@ local ltn12 = require("ltn12")
 local test_support = require("test_support")
 require 'busted.runner'()
 
+describe("when revocation_fail_mode is closed and the revocation store read fails", function()
+  test_support.start_server({
+    revocation_test = {
+      fail_mode = "closed",
+      get_fails_after = 1,
+    },
+  })
+  teardown(test_support.stop_server)
+
+  local _, _, cookie = test_support.login()
+
+  local response_body = {}
+  local _, status = http.request({
+    url = "http://127.0.0.1/default/t",
+    headers = { cookie = cookie },
+    redirect = false,
+    sink = ltn12.sink.table(response_body),
+  })
+  local body = table.concat(response_body)
+
+  it("propagates the session start failure", function()
+    assert.are.equals(401, status)
+    assert.truthy(string.find(body, "unable to check session revocation", 1, true))
+  end)
+
+  it("does not authenticate the request", function()
+    assert.is_nil(string.find(body, "hello, world!", 1, true))
+  end)
+end)
+
 describe("when revocation_fail_mode is closed and the revocation store is unreachable during logout", function()
   test_support.start_server({
     revocation_test = {
