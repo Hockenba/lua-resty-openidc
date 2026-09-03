@@ -99,6 +99,7 @@ local DEFAULT_REVOCATION_TEST_ENABLED = "false"
 local DEFAULT_REVOCATION_FAIL_MODE = '"closed"'
 local DEFAULT_REVOCATION_SET_FAILS = "false"
 local DEFAULT_REVOCATION_GET_FAILS_AFTER = "nil"
+local DEFAULT_SESSION_START_FAILS = "false"
 
 local DEFAULT_INIT_TEMPLATE = [[
 local test_globals = {}
@@ -107,6 +108,11 @@ JWT_SIGN_SECRET]=]
 
 if os.getenv('coverage') then
   require("luacov.runner")("/spec/luacov/settings.luacov")
+end
+if SESSION_START_FAILS then
+  require("resty.session").start = function()
+    return nil, "session start failed"
+  end
 end
 test_globals.oidc = require "resty.openidc"
 test_globals.cjson = require "cjson"
@@ -692,6 +698,7 @@ local function write_template(out, template, custom_config)
       (custom_config["revocation_test"].set_fails and "true" or "false") or DEFAULT_REVOCATION_SET_FAILS)
     :gsub("REVOCATION_GET_FAILS_AFTER", custom_config["revocation_test"] and
       tostring(custom_config["revocation_test"].get_fails_after) or DEFAULT_REVOCATION_GET_FAILS_AFTER)
+    :gsub("SESSION_START_FAILS", custom_config["session_start_fails"] and "true" or DEFAULT_SESSION_START_FAILS)
   out:write(content)
 end
 
