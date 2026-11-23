@@ -1,7 +1,22 @@
 local http = require("socket.http")
 local ltn12 = require("ltn12")
+local mime = require("mime")
 local test_support = require("test_support")
 require 'busted.runner'()
+
+-- the key under which the revocation store has the session id of a cookie: the
+-- session id is the 32 bytes that follow the 3 byte type and flags of the header
+local function session_id_key(cookie)
+  local value = cookie:match("^[^=]+=([^;]+)")
+  local header = value:sub(1, 48):gsub("-", "+"):gsub("_", "/")
+  local sid = mime.unb64(header):sub(4, 35)
+  return (mime.b64(sid):gsub("%+", "-"):gsub("/", "_"):gsub("=", ""))
+end
+
+local function revocation_has(key)
+  local body = http.request("http://127.0.0.1/revocation-has?key=" .. key)
+  return body:match("yes") ~= nil
+end
 
 describe("when session startup returns no session", function()
   test_support.start_server({
@@ -166,5 +181,12 @@ describe("when a logout opens a session that is due for a rolling refresh", func
       redirect = false,
     })
     assert.are.equals(302, replay_status)
+  end)
+
+  -- With lineage revocation the replay is rejected whichever session id gets
+  -- marked, so check the mark itself: after a refresh at logout it would be the
+  -- one of the rotated session.
+  it("did not refresh the session before revoking it", function()
+    assert.is_true(revocation_has(session_id_key(cookie)))
   end)
 end)

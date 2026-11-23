@@ -650,6 +650,12 @@ http {
           }
         }
 
+        location /revocation-has {
+            content_by_lua_block {
+                ngx.say(ngx.shared.revocation_test:get(ngx.var.arg_key) and "yes" or "no")
+            }
+        }
+
         location /fail-revocation-reads {
             content_by_lua_block {
                 ngx.shared.revocation_test:set("fail_reads", true)
