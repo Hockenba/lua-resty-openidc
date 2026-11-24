@@ -874,13 +874,13 @@ local function is_running(pid)
   return kill(pid, 0)
 end
 
--- tries hard to stop the server started by test_support.start_server
 -- From now on every read of the revocation test store fails, whatever the number
 -- of reads a login or a request makes.
 function test_support.fail_revocation_reads()
   http.request("http://127.0.0.1/fail-revocation-reads")
 end
 
+-- tries hard to stop the server started by test_support.start_server
 function test_support.stop_server()
   local pid = test_support.load("/tmp/server/logs/nginx.pid")
   local sleep = 0.1

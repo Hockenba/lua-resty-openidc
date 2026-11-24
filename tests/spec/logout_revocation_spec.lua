@@ -153,7 +153,7 @@ describe("when a logout opens a session that is due for a rolling refresh", func
   test_support.start_server({
     revocation_test = {
       fail_mode = "closed",
-      rolling_timeout = 8,
+      rolling_timeout = 20,
     },
   })
   teardown(test_support.stop_server)
@@ -162,7 +162,7 @@ describe("when a logout opens a session that is due for a rolling refresh", func
 
   -- past 75% of the rolling timeout, where start() would save the session
   -- under a new session id
-  os.execute("sleep 7")
+  os.execute("sleep 16")
 
   local _, logout_status = http.request({
     url = "http://127.0.0.1/default/logout",
@@ -183,9 +183,9 @@ describe("when a logout opens a session that is due for a rolling refresh", func
     assert.are.equals(302, replay_status)
   end)
 
-  -- With lineage revocation the replay is rejected whichever session id gets
-  -- marked, so check the mark itself: after a refresh at logout it would be the
-  -- one of the rotated session.
+  -- With the lineage revocation of lua-resty-session the replay is rejected
+  -- whichever session id gets marked, so check the mark itself: after a refresh
+  -- at logout it would be the one of the rotated session.
   it("did not refresh the session before revoking it", function()
     assert.is_true(revocation_has(session_id_key(cookie)))
   end)
