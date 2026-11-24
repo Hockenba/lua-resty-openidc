@@ -4,8 +4,8 @@ local mime = require("mime")
 local test_support = require("test_support")
 require 'busted.runner'()
 
--- the key under which the revocation store has the session id of a cookie: the
--- session id is the 32 bytes that follow the 3 byte type and flags of the header
+-- the revocation store key of a cookie's session id, the 32 bytes after the
+-- 3 byte type and flags of the cookie header
 local function session_id_key(cookie)
   local value = cookie:match("^[^=]+=([^;]+)")
   local header = value:sub(1, 48):gsub("-", "+"):gsub("_", "/")
@@ -183,9 +183,8 @@ describe("when a logout opens a session that is due for a rolling refresh", func
     assert.are.equals(302, replay_status)
   end)
 
-  -- With the lineage revocation of lua-resty-session the replay is rejected
-  -- whichever session id gets marked, so check the mark itself: after a refresh
-  -- at logout it would be the one of the rotated session.
+  -- with lineage revocation the replay is rejected either way, so check that
+  -- the presented session id was marked: after a refresh it would be the new one
   it("did not refresh the session before revoking it", function()
     assert.is_true(revocation_has(session_id_key(cookie)))
   end)
